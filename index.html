@@ -808,13 +808,28 @@ td.l { text-align: left; }
   // ---------------- Beamer ----------------
   const BF = [{ F: 16, col: 'var(--warn)', name: 'Level 1 · 16 Zaunteile' }, { F: 20, col: 'var(--accent)', name: 'Level 2 · 20 Zaunteile' }, { F: 24, col: 'var(--plum)', name: 'Level 3 · 24 Zaunteile' }, { F: 28, col: 'var(--ok)', name: 'Bonus · 28 Zaunteile' }];
   function chartSVG(series, curves) {
-    const W = 900, H = 560, m = { l: 60, r: 20, t: 16, b: 56 }, xMax = 14, yMax = 50, fs = 18;
+    // Koordinatensystem wie im Heft: Achsen mit Pfeilspitzen, Teilstriche, Beschriftung an den Pfeilen.
+    const W = 920, H = 600, m = { l: 64, r: 70, t: 56, b: 52 }, xMax = 14, yMax = 50, fs = 18;
     const sx = (v) => m.l + v / xMax * (W - m.l - m.r), sy = (v) => H - m.b - v / yMax * (H - m.t - m.b);
-    let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Diagramm: Breite gegen Anzahl Schafe">';
-    for (let y = 0; y <= yMax; y += 5) s += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + sy(y) + '" y2="' + sy(y) + '" stroke="var(--line)"/><text x="' + (m.l - 10) + '" y="' + (sy(y) + 6) + '" text-anchor="end" font-size="' + fs + '" fill="var(--muted)">' + y + '</text>';
-    for (let x = 0; x <= xMax; x++) s += '<text x="' + sx(x) + '" y="' + (H - m.b + 26) + '" text-anchor="middle" font-size="' + fs + '" fill="var(--muted)">' + x + '</text>';
-    s += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + sy(0) + '" y2="' + sy(0) + '" stroke="var(--muted)" stroke-width="2"/><line x1="' + m.l + '" x2="' + m.l + '" y1="' + m.t + '" y2="' + sy(0) + '" stroke="var(--muted)" stroke-width="2"/>';
-    s += '<text x="' + (W - m.r) + '" y="' + (H - 6) + '" text-anchor="end" font-size="' + fs + '" font-weight="700" fill="var(--fg)">Breite b</text><text x="' + (m.l + 8) + '" y="' + (m.t + 18) + '" font-size="' + fs + '" font-weight="700" fill="var(--fg)">Schafe A</text>';
+    const ox = sx(0), oy = sy(0), xEnd = W - 22, yEnd = 18, ax = 'var(--fg)';
+    let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Koordinatensystem: Breite b gegen Anzahl der Schafe A">';
+    // Hilfsgitter
+    for (let x = 1; x <= xMax; x++) s += '<line x1="' + sx(x) + '" x2="' + sx(x) + '" y1="' + sy(yMax) + '" y2="' + oy + '" stroke="var(--line)" stroke-width="1"/>';
+    for (let y = 5; y <= yMax; y += 5) s += '<line x1="' + ox + '" x2="' + sx(xMax) + '" y1="' + sy(y) + '" y2="' + sy(y) + '" stroke="var(--line)" stroke-width="1"/>';
+    // Achsen mit Pfeilspitzen
+    s += '<line x1="' + ox + '" y1="' + oy + '" x2="' + (xEnd - 14) + '" y2="' + oy + '" stroke="' + ax + '" stroke-width="2.5"/>';
+    s += '<polygon points="' + xEnd + ',' + oy + ' ' + (xEnd - 18) + ',' + (oy - 8) + ' ' + (xEnd - 18) + ',' + (oy + 8) + '" fill="' + ax + '"/>';
+    s += '<line x1="' + ox + '" y1="' + oy + '" x2="' + ox + '" y2="' + (yEnd + 14) + '" stroke="' + ax + '" stroke-width="2.5"/>';
+    s += '<polygon points="' + ox + ',' + yEnd + ' ' + (ox - 8) + ',' + (yEnd + 18) + ' ' + (ox + 8) + ',' + (yEnd + 18) + '" fill="' + ax + '"/>';
+    // Teilstriche und Zahlen
+    for (let x = 1; x <= xMax; x++) s += '<line x1="' + sx(x) + '" x2="' + sx(x) + '" y1="' + (oy - 6) + '" y2="' + (oy + 6) + '" stroke="' + ax + '" stroke-width="2"/><text x="' + sx(x) + '" y="' + (oy + 28) + '" text-anchor="middle" font-size="' + fs + '" fill="' + ax + '">' + x + '</text>';
+    for (let y = 5; y <= yMax; y += 5) s += '<line x1="' + (ox - 6) + '" x2="' + (ox + 6) + '" y1="' + sy(y) + '" y2="' + sy(y) + '" stroke="' + ax + '" stroke-width="2"/><text x="' + (ox - 12) + '" y="' + (sy(y) + 6) + '" text-anchor="end" font-size="' + fs + '" fill="' + ax + '">' + y + '</text>';
+    s += '<text x="' + (ox - 12) + '" y="' + (oy + 26) + '" text-anchor="end" font-size="' + fs + '" fill="' + ax + '">0</text>';
+    // Achsenbeschriftung an den Pfeilspitzen
+    s += '<text x="' + xEnd + '" y="' + (oy + 30) + '" text-anchor="end" font-size="22" font-style="italic" font-weight="700" fill="' + ax + '">b</text>';
+    s += '<text x="' + xEnd + '" y="' + (oy + 48) + '" text-anchor="end" font-size="15" fill="var(--muted)">Breite</text>';
+    s += '<text x="' + (ox + 16) + '" y="' + (yEnd + 14) + '" font-size="22" font-style="italic" font-weight="700" fill="' + ax + '">A</text>';
+    s += '<text x="' + (ox + 38) + '" y="' + (yEnd + 14) + '" font-size="15" fill="var(--muted)">Anzahl der Schafe</text>';
     if (curves) series.forEach((sr) => { const k = sr.F / 2; let d = ''; for (let i = 0; i <= 100; i++) { const x = i / 100 * k; d += (i ? 'L' : 'M') + sx(x).toFixed(1) + ' ' + sy(x * (k - x)).toFixed(1); } s += '<path d="' + d + '" fill="none" stroke="' + sr.col + '" stroke-width="3" stroke-dasharray="7 6"/>'; });
     series.forEach((sr) => sr.pts.forEach((p) => {
       const r = 9 + Math.min(7, (p.n - 1) * 1.5);
