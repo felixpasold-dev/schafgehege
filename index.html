@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Das Schafgehege</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: phone-first Spiel. Sticky HUD oben, darunter Auftrag, Weide (Canvas), Werkzeuge, Aktionen. Weitere Ansichten: Start, Level geschafft, Ergebnis, Beamer (#beamer). */
+:root {
+  --bg: #edf2e4; --surface: #fbfcf7; --fg: #1f2a1c; --muted: #5a6954; --line: #d3dbc7;
+  --meadow: #d6e3c3; --meadow-2: #cfdcbb; --grass: #8cc35a; --grass-2: #7fb84f;
+  --wood: #8a5a2b; --stone: #9a9ea2; --stone-2: #7d8186; --leaf: #3f7d2c; --leaf-2: #2f6420; --trunk: #6b4423;
+  --water: #4b8fcf; --water-2: #7ab3e3; --wool: #f8f4e9; --face: #3b3330;
+  --accent: #2f6fb0; --accent-fg: #ffffff; --plum: #8a4f9e;
+  --ok: #2e8b47; --warn: #b97812; --bad: #c0392b;
+  --font-display: "Pixelify Sans", "Courier New", monospace;
+  --font-num: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif; /* gut unterscheidbare Ziffern */
+  --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131a13; --surface: #1c241b; --fg: #e6eddf; --muted: #9db096; --line: #2f3b2d;
+    --meadow: #243022; --meadow-2: #212c1f; --grass: #4f8034; --grass-2: #46752d;
+    --wood: #c08a50; --stone: #7a7f84; --stone-2: #62676c; --leaf: #4f9a38; --leaf-2: #3b7d29; --trunk: #8a5a2e;
+    --water: #3d7bb8; --water-2: #5e9ad3; --wool: #ece6d6; --face: #2a2421;
+    --accent: #7db2e6; --accent-fg: #0d1a26; --plum: #c28ad6;
+    --ok: #5cc27a; --warn: #e2a845; --bad: #e46b5c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131a13; --surface: #1c241b; --fg: #e6eddf; --muted: #9db096; --line: #2f3b2d;
+  --meadow: #243022; --meadow-2: #212c1f; --grass: #4f8034; --grass-2: #46752d;
+  --wood: #c08a50; --stone: #7a7f84; --stone-2: #62676c; --leaf: #4f9a38; --leaf-2: #3b7d29; --trunk: #8a5a2e;
+  --water: #3d7bb8; --water-2: #5e9ad3; --wool: #ece6d6; --face: #2a2421;
+  --accent: #7db2e6; --accent-fg: #0d1a26; --plum: #c28ad6;
+  --ok: #5cc27a; --warn: #e2a845; --bad: #e46b5c;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 32px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; padding-top: 12px; }
+h1, h2, h3 { font-family: var(--font-num); font-weight: 700; margin: 0; text-wrap: balance; }
+h1 { font-family: var(--font-display); }
+h1 { font-size: 1.9rem; line-height: 1.1; }
+h2 { font-size: 1.2rem; }
+h3 { font-size: 1rem; }
+p { margin: 0; }
+ul { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
+.muted { color: var(--muted); }
+.small { font-size: .85rem; }
+.card { background: var(--surface); border: 2px solid var(--line); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.btn {
+  font: 700 1.05rem var(--font-num); padding: 13px 14px; border-radius: 8px; border: 2px solid transparent;
+  background: var(--accent); color: var(--accent-fg); cursor: pointer; width: 100%;
+}
+.btn.secondary { background: var(--surface); color: var(--fg); border-color: var(--line); }
+.btn.reject { background: var(--surface); color: var(--bad); border-color: var(--bad); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+input[type="text"] { font: 1.1rem var(--font-body); padding: 11px 12px; border-radius: 8px; border: 2px solid var(--line); background: var(--bg); color: var(--fg); width: 100%; }
+.linkbtn { color: var(--accent); background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-decoration: underline; }
+
+/* HUD */
+.hud {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding-block: 10px 8px; border-bottom: 2px solid var(--line);
+}
+.hud .lvl { font: 700 .95rem var(--font-num); }
+.hud .lvl small { display: block; font: 400 .78rem var(--font-body); color: var(--muted); }
+.hud .stat { text-align: right; font: 700 1.15rem var(--font-num); font-variant-numeric: tabular-nums; }
+.hud .stat small { display: block; font: 400 .7rem var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+
+.mission { display: grid; grid-template-columns: 48px 1fr; gap: 12px; align-items: start; }
+.avatar { width: 48px; height: 48px; border-radius: 8px; background: var(--meadow); display: grid; place-items: center; }
+.avatar canvas { width: 40px; height: 40px; image-rendering: pixelated; }
+.mission .who { font: 700 1rem var(--font-display); }
+
+canvas#field { display: block; width: 100%; touch-action: none; border-radius: 6px; }
+.field-bleed { margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px)) + 4px); margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)) + 4px); }
+@media (min-width: 600px) { .field-bleed { margin-left: 0; margin-right: 0; } }
+.toolhint { font-size: .85rem; color: var(--muted); margin-top: -4px; }
+.fence { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; }
+.fence .count { font: 700 1.15rem var(--font-num); font-variant-numeric: tabular-nums; }
+.bar { grid-column: 1 / -1; height: 9px; border-radius: 5px; background: var(--line); overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--wood); transition: width .12s; }
+
+.tools { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; }
+.tool {
+  font: 700 .95rem var(--font-display); padding: 11px 8px; border-radius: 8px; border: 2px solid var(--line);
+  background: var(--surface); color: var(--fg); cursor: pointer;
+}
+.tool[aria-pressed="true"] { background: var(--wood); border-color: var(--wood); color: var(--surface); }
+.tool.demolish[aria-pressed="true"] { background: var(--bad); border-color: var(--bad); }
+.tool.clear { font-size: .82rem; padding-inline: 10px; }
+.actions { display: grid; grid-template-columns: 1fr; gap: 8px; }
+
+.feedback { border-radius: 8px; padding: 10px 12px; font-weight: 700; border: 2px solid var(--line); background: var(--surface); }
+.feedback.ok { border-color: var(--ok); color: var(--ok); }
+.feedback.bad { border-color: var(--bad); color: var(--bad); }
+.feedback.hint { border-color: var(--warn); color: var(--warn); }
+
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: center; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+th { font-size: .74rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+td.l { text-align: left; }
+.big { font: 700 2.6rem var(--font-num); line-height: 1; font-variant-numeric: tabular-nums; }
+.stats3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+.stats3 div { background: var(--bg); border-radius: 8px; padding: 10px 4px; }
+.stats3 b { display: block; font: 700 1.4rem var(--font-num); font-variant-numeric: tabular-nums; }
+.stats3 span { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.code { font: 700 2rem var(--font-num); letter-spacing: .2em; text-align: center; padding: 8px; border: 2px dashed var(--accent); border-radius: 8px; color: var(--accent); }
+
+.toast {
+  position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(20px);
+  background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 8px; font: 700 1.05rem var(--font-num);
+  opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; max-width: calc(100% - 32px); text-align: center; z-index: 20;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Beamer */
+#beamer .wrap { max-width: 1150px; }
+.b-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 800px) { .b-grid { grid-template-columns: 1fr; } }
+.b-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
+.b-btn { padding: 7px 2px; border-radius: 6px; border: 2px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; font: 700 .9rem var(--font-num); font-variant-numeric: tabular-nums; }
+.b-btn small { display: block; font: 400 .72rem var(--font-body); color: var(--muted); }
+.b-btn.has { border-color: var(--accent); }
+.b-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { padding: 8px 12px; border-radius: 6px; border: 2px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; font: 700 .9rem var(--font-body); }
+.pill[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.pill.danger { color: var(--bad); border-color: var(--bad); }
+.chart svg { width: 100%; height: auto; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .85rem; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+.entry { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto; gap: 8px; }
+@media (max-width: 600px) { .entry { grid-template-columns: 1fr; } }
+.entry input { font-size: 1rem; padding: 9px 10px; }
+#sCode { font-family: var(--font-num); letter-spacing: .12em; text-transform: uppercase; }
+#scoreCard tr.top1 td { color: var(--warn); font-weight: 700; }
+#scoreCard tr.top2 td, #scoreCard tr.top3 td { font-weight: 700; }
+#scoreCard.big table { font-size: 1.6rem; }
+#scoreCard.big th { font-size: 1rem; }
+#scoreCard.big td { padding: 12px 6px; }
+#scoreCard.big .entry, #scoreCard.big #sOut, #scoreCard.big .del { display: none; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<!-- START -->
+<section id="sStart" hidden>
+  <div class="wrap">
+    <h1>Das Schafgehege</h1>
+    <div class="card">
+      <p>Auf dem Hof wartet viel Arbeit. Die Bauern brauchen neue Gehege für ihre Schafe, und jeder hat genaue Vorstellungen. Du baust die Zäune.</p>
+    </div>
+    <div class="card">
+      <h2>So geht's</h2>
+      <ul>
+        <li>Tippe auf <b>Zaun bauen</b> und zieh mit dem Finger von einem Punkt zum anderen. Beim Loslassen steht der Zaun. Jedes Kästchen-Stück ist ein Zaunteil.</li>
+        <li>Das Gehege muss ein <b>Rechteck</b> sein, und alle Zaunteile müssen verbaut werden.</li>
+        <li>Mit <b>Gehege abgeben</b> prüft der Bauer dein Gehege.</li>
+        <li>Manche Wünsche sind <b>unmöglich</b>. Dann tippst du auf <b>Geht nicht!</b></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>Punkte</h2>
+      <table>
+        <tbody>
+          <tr><td class="l">Auftrag gelöst</td><td>+100</td></tr>
+          <tr><td class="l">Sauber gebaut (ohne Abreißen, ohne Fehler)</td><td>+20</td></tr>
+          <tr><td class="l">Falsches Gehege abgegeben</td><td>−20</td></tr>
+          <tr><td class="l">„Geht nicht!“, obwohl es geht</td><td>−40</td></tr>
+        </tbody>
+      </table>
+      <p class="muted small">Ihr habt <b>15 Minuten</b> für 4 Level. Startet alle gleichzeitig, wenn die Lehrkraft „Los“ sagt. Bei Punktgleichstand gewinnt, wer schneller war.</p>
+    </div>
+    <label for="nameIn"><b>Dein Spielername</b></label>
+    <input type="text" id="nameIn" maxlength="20" placeholder="z. B. Mia K." autocomplete="off">
+    <button class="btn" id="startBtn">Los geht's</button>
+    <p class="small" style="text-align:right"><a href="#beamer">Lehrkraft: Beamer-Ansicht</a></p>
+  </div>
+</section>
+
+<!-- GAME -->
+<section id="sGame" hidden>
+  <div class="wrap">
+    <div class="hud">
+      <div class="lvl" id="hudLvl">Level 1<small>Auftrag 1 von 5</small></div>
+      <div class="stat"><small>Punkte</small><span id="hudPts">0</span></div>
+      <div class="stat"><small>Restzeit</small><span id="hudTime">15:00</span></div>
+    </div>
+
+    <div class="card mission">
+      <div class="avatar"><canvas id="avatar" width="10" height="10"></canvas></div>
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+        <div class="who" id="mWho">Bauer Karl</div>
+        <p id="mText"></p>
+      </div>
+    </div>
+
+    <div class="field-bleed"><canvas id="field" aria-label="Weide. Im Baumodus von einem Gitterpunkt zum anderen ziehen, um eine Zaunlinie zu setzen."></canvas></div>
+
+    <div class="fence">
+      <div class="count" id="fCount">0 von 16 Zaunteilen verbaut</div>
+      <div class="muted small" id="fLeft"></div>
+      <div class="bar"><span id="fBar"></span></div>
+    </div>
+
+    <div class="tools">
+      <button class="tool" id="tBuild" aria-pressed="false">Zaun bauen</button>
+      <button class="tool demolish" id="tDemolish" aria-pressed="false">Abreißen</button>
+      <button class="tool clear" id="tClear">Alles weg</button>
+    </div>
+    <p class="toolhint">Zieh von einem Punkt zum anderen. Der Zaun wird beim Loslassen gesetzt. Zum Abreißen ein Zaunstück antippen oder eine Linie darüber ziehen.</p>
+
+    <div class="feedback" id="feedback" hidden></div>
+
+    <div class="actions" id="actPlay">
+      <button class="btn" id="submitBtn">Gehege abgeben</button>
+      <button class="btn reject" id="rejectBtn">Geht nicht!</button>
+    </div>
+    <div class="actions" id="actNext" hidden>
+      <button class="btn" id="nextBtn">Nächster Auftrag</button>
+    </div>
+
+    <p class="small muted" style="text-align:center"><button class="linkbtn" id="finishBtn">Spiel beenden und Ergebnis zeigen</button></p>
+  </div>
+</section>
+
+<!-- LEVEL DONE -->
+<section id="sLevel" hidden>
+  <div class="wrap">
+    <h1 id="ldTitle">Level 1 geschafft!</h1>
+    <div class="card">
+      <h2 id="ldSub">Deine Gehege</h2>
+      <div id="ldTable"></div>
+      <p class="muted small" id="ldHint"></p>
+    </div>
+    <button class="btn" id="ldNext">Weiter</button>
+    <button class="btn secondary" id="ldFinish">Ergebnis zeigen</button>
+  </div>
+</section>
+
+<!-- RESULT -->
+<section id="sResult" hidden>
+  <div class="wrap">
+    <h1 id="rTitle">Feierabend auf dem Hof</h1>
+    <div class="card" style="align-items:center;text-align:center">
+      <p class="muted" id="rName">Mia</p>
+      <div class="big" id="rPts">0</div>
+      <p class="muted small">Punkte</p>
+    </div>
+    <div class="stats3">
+      <div><b id="rSolved">0</b><span>Aufträge</span></div>
+      <div><b id="rTime">0:00</b><span>Zeit</span></div>
+      <div><b id="rErr">0</b><span>Fehler</span></div>
+    </div>
+    <div class="card">
+      <h3>Dein Ergebniscode</h3>
+      <div class="code" id="rCode">----</div>
+      <p class="muted small">Zeig oder sag diesen Code deiner Lehrkraft. Darin stecken deine Punkte und deine Zeit.</p>
+    </div>
+    <div class="card">
+      <h2>Alle deine Gehege</h2>
+      <div id="rTable"></div>
+    </div>
+    <button class="btn secondary" id="rBack">Weiterspielen</button>
+    <p class="small" style="text-align:center"><button class="linkbtn" id="rNew">Neues Spiel starten</button></p>
+  </div>
+</section>
+
+<!-- BEAMER -->
+<section id="beamer" hidden>
+  <div class="wrap">
+    <header id="beamerHead" style="display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap">
+      <div>
+        <h1>Unsere Gehege</h1>
+        <p class="muted">Tippe die Gehege an, die die Klasse gebaut hat. Die Anzahl der Schafe wird automatisch berechnet.</p>
+      </div>
+      <a href="#" class="small">Zur Schüler-Ansicht</a>
+    </header>
+    <div class="b-grid">
+      <div class="card chart"><div id="bigChart"></div><div class="legend" id="bigLegend"></div></div>
+      <div style="display:flex;flex-direction:column;gap:14px;min-width:0" id="bSide"></div>
+    </div>
+    <div class="card" id="scoreCard">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <h2>Rangliste</h2>
+        <div class="b-actions">
+          <button class="pill" id="sBig" aria-pressed="false">Rangliste groß zeigen</button>
+          <button class="pill danger" id="sClear">Rangliste leeren</button>
+        </div>
+      </div>
+      <div class="entry">
+        <input type="text" id="sName" placeholder="Name (optional)" autocomplete="off">
+        <input type="text" id="sCode" placeholder="Ergebniscode, z. B. K7M2-9QXA" autocomplete="off" autocapitalize="characters" spellcheck="false">
+        <button class="pill" id="sAdd">Eintragen</button>
+      </div>
+      <p id="sOut" style="font-weight:700;min-height:1.4em"></p>
+      <div id="scoreTable" style="overflow-x:auto"></div>
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  const COLS = 10, ROWS = 12; // Hochformat: größere Kästchen auf dem Handy
+  const $ = (id) => document.getElementById(id);
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  // ---------------- Level-Daten ----------------
+  const LEVELS = [
+    { title: 'Level 1', place: 'Die freie Weide', fence: 16, obs: [], missions: [
+      { who: 'Bauer Karl', p: 'Er', n: 12 },
+      { who: 'Bäuerin Fatma', p: 'Sie', n: 7 },
+      { who: 'Bauer Jonas', p: 'Er', n: 15 },
+      { who: 'Bäuerin Lena', p: 'Sie', n: 18 },
+      { who: 'Der sture Schäfer', p: 'Er', max: true }
+    ]},
+    { title: 'Level 2', place: 'Weide mit Bäumen', fence: 20, obs: [[2,2,'tree'],[9,7,'tree'],[5,9,'rock'],[10,1,'rock'],[6,5,'tree']], missions: [
+      { who: 'Bäuerin Fatma', p: 'Sie', n: 24 },
+      { who: 'Bauer Karl', p: 'Er', n: 9 },
+      { who: 'Bauer Jonas', p: 'Er', n: 26 },
+      { who: 'Bäuerin Lena', p: 'Sie', n: 21 },
+      { who: 'Der sture Schäfer', p: 'Er', max: true }
+    ]},
+    { title: 'Level 3', place: 'Weide am Teich', fence: 24, obs: [[9,6,'pond'],[10,6,'pond'],[9,7,'pond'],[10,7,'pond'],[3,0,'tree'],[0,8,'tree'],[6,9,'rock'],[11,1,'rock'],[1,3,'tree'],[7,2,'rock']], missions: [
+      { who: 'Bauer Jonas', p: 'Er', n: 20 },
+      { who: 'Bäuerin Lena', p: 'Sie', n: 35 },
+      { who: 'Bauer Karl', p: 'Er', n: 37 },
+      { who: 'Bäuerin Fatma', p: 'Sie', n: 32 },
+      { who: 'Der sture Schäfer', p: 'Er', max: true }
+    ]},
+    { title: 'Bonuslevel', place: 'Der Felsenhof', fence: 28, obs: [[0,0,'rock'],[1,0,'rock'],[11,9,'rock'],[10,9,'rock'],[5,0,'tree'],[11,4,'tree'],[0,6,'tree'],[8,9,'pond'],[7,9,'pond'],[3,9,'tree'],[9,2,'rock']], missions: [
+      { who: 'Bäuerin Lena', p: 'Sie', n: 40 },
+      { who: 'Bauer Karl', p: 'Er', n: 45 },
+      { who: 'Bäuerin Fatma', p: 'Sie', n: 47 },
+      { who: 'Bauer Jonas', p: 'Er', n: 48 },
+      { who: 'Der sture Schäfer', p: 'Er', max: true }
+    ]}
+  ];
+  // Karten sind quer (12 × 10) notiert; für das Hochformat gespiegelt.
+  LEVELS.forEach((L) => { L.obs = L.obs.map(([x, y, t]) => [y, x, t]); });
+  const LIMIT = 15 * 60 * 1000;
+  const TOTAL_M = LEVELS.reduce((s, l) => s + l.missions.length, 0);
+  const possibleAreas = (F) => { const s = new Set(); for (let b = 1; b < F / 2; b++) s.add(b * (F / 2 - b)); return s; };
+  const maxArea = (F) => Math.max(...possibleAreas(F));
+
+  // ---------------- Zustand ----------------
+  const KEY = 'schafgehege-v3';
+  const fresh = () => ({ name: '', startedAt: 0, finishedAt: 0, lv: 0, mi: 0, pts: 0, errors: 0, log: [], segs: [], demolished: false, missErr: false, solved: false, timeUp: false, screen: 'start', beamer: { counts: {}, hist: [], curves: false } });
+  let S = fresh();
+  try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s && typeof s === 'object') S = Object.assign(fresh(), s); } catch (e) {}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+  // ---------------- Hilfen ----------------
+  let tT;
+  function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(tT); tT = setTimeout(() => el.classList.remove('show'), 2000); }
+  const fmt = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  const elapsed = () => S.startedAt ? Math.min(LIMIT, (S.finishedAt || Date.now()) - S.startedAt) : 0;
+  const isDone = (lv, mi) => S.log.some((e) => e.lv === lv && e.mi === mi);
+  const solvedCount = () => S.log.length;
+  // Ergebniscode: Punkte, Aufträge und Zeit stecken verschlüsselt in 8 Zeichen, plus Prüfsumme.
+  const B32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ', MIX = 0xA5C3E97;
+  function hash12(v) { const s = v + '|weide'; let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h & 0xFFF; }
+  function encodeResult(pts, solved, secs) {
+    const p = Math.max(0, Math.min(8191, pts + 2000)), so = Math.max(0, Math.min(31, solved)), se = Math.max(0, Math.min(1023, secs));
+    const v = (p * 32 + so) * 1024 + se;
+    let n = ((v ^ MIX) >>> 0) * 4096 + hash12(v), out = '';
+    for (let i = 0; i < 8; i++) { out = B32[n % 32] + out; n = Math.floor(n / 32); }
+    return out.slice(0, 4) + '-' + out.slice(4);
+  }
+  function decodeResult(code) {
+    const c = code.toUpperCase().replace(/[\s-]/g, '').replace(/O/g, '0').replace(/[IL]/g, '1').replace(/U/g, 'V');
+    if (c.length !== 8) return null;
+    let n = 0;
+    for (const ch of c) { const d = B32.indexOf(ch); if (d < 0) return null; n = n * 32 + d; }
+    const chk = n % 4096, v = (Math.floor(n / 4096) ^ MIX) >>> 0;
+    if (v >= 268435456 || hash12(v) !== chk) return null;
+    const secs = v % 1024, solved = Math.floor(v / 1024) % 32, pts = Math.floor(v / 32768) - 2000;
+    if (solved > 20 || secs > 900) return null;
+    return { pts, solved, secs };
+  }
+  function show(id) { ['sStart', 'sGame', 'sLevel', 'sResult', 'beamer'].forEach((s) => $(s).hidden = s !== id); window.scrollTo(0, 0); }
+
+  // ---------------- Sprites ----------------
+  const SHEEP = ['..........','..WWWWW...','.WWWWWWWFF','WWWWWWWFEF','WWWWWWWFFF','.WWWWWWW..','..L.L.L.L.','..L.L.L.L.'];
+  const FARMER = ['...HHHH...','..HHHHHH..','.HHHHHHHH.','...SSSS...','...SESE...','...SSSS...','..CCCCCC..','.CCCCCCCC.','.CCCCCCCC.','..CC..CC..'];
+  function sprite(ctx, rows, x, y, size, pal, flip) {
+    const w = rows[0].length, h = rows.length;
+    const px = Math.max(1, Math.floor(size * 0.86 / w));
+    const ox = Math.round(x + (size - px * w) / 2), oy = Math.round(y + (size - px * h) / 2);
+    for (let r = 0; r < h; r++) for (let k = 0; k < w; k++) {
+      const ch = rows[r][flip ? w - 1 - k : k];
+      if (ch === '.' || !pal[ch]) continue;
+      ctx.fillStyle = pal[ch]; ctx.fillRect(ox + k * px, oy + r * px, px, px);
+    }
+  }
+  function drawAvatar(who) {
+    const c = $('avatar'), x = c.getContext('2d');
+    x.clearRect(0, 0, 10, 10);
+    const hat = /Schäfer/.test(who) ? css('--face') : /Bäuerin/.test(who) ? css('--plum') : css('--wood');
+    const shirt = /Fatma|Jonas/.test(who) ? css('--accent') : css('--ok');
+    const rows = FARMER, pal = { H: hat, S: '#e8b98f', E: '#2a2421', C: shirt };
+    for (let r = 0; r < 10; r++) for (let k = 0; k < 10; k++) { const ch = rows[r][k]; if (ch !== '.') { x.fillStyle = pal[ch]; x.fillRect(k, r, 1, 1); } }
+  }
+
+  // ---------------- Weide ----------------
+  const cv = $('field'), ctx = cv.getContext('2d');
+  let G = { cell: 20, x0: 0, y0: 0 };
+  let mode = null, cursor = null, anim = null; // anim: {x,y,w,h,start,sheep}
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let rafPending = false;
+  function startAnim(v) {
+    const n = v.w * v.h, step = Math.min(70, 1600 / n), sheep = [];
+    let k = 0;
+    for (let i = v.w - 1; i >= 0; i--) for (let j = 0; j < v.h; j++) {
+      const tx = v.x + i, sx = -1.2;
+      sheep.push({ tx, ty: v.y + j, sx, delay: k++ * step, dur: (tx - sx) / 9 * 1000, flip: ((i * 7 + j * 3) % 3) === 0 });
+    }
+    anim = Object.assign({ start: performance.now(), sheep }, v);
+  }
+  const lvl = () => LEVELS[S.lv];
+  const mis = () => lvl().missions[S.mi];
+  const segSet = () => new Set(S.segs);
+  const obsSet = () => new Set(lvl().obs.map((o) => o[0] + ',' + o[1]));
+
+  function drawObstacle(o, c) {
+    const [i, j, t] = o, s = G.cell, x = G.x0 + i * s, y = G.y0 + j * s;
+    if (t === 'pond') {
+      ctx.fillStyle = c.water; ctx.fillRect(x, y, s, s);
+      ctx.fillStyle = c.water2; ctx.fillRect(x + s * .2, y + s * .35, s * .35, s * .1); ctx.fillRect(x + s * .5, y + s * .65, s * .3, s * .1);
+    } else if (t === 'tree') {
+      ctx.fillStyle = c.trunk; ctx.fillRect(x + s * .42, y + s * .55, s * .16, s * .35);
+      ctx.fillStyle = c.leaf2; ctx.fillRect(x + s * .15, y + s * .2, s * .7, s * .42);
+      ctx.fillStyle = c.leaf; ctx.fillRect(x + s * .25, y + s * .08, s * .5, s * .42);
+    } else {
+      ctx.fillStyle = c.stone2; ctx.fillRect(x + s * .15, y + s * .35, s * .7, s * .45);
+      ctx.fillStyle = c.stone; ctx.fillRect(x + s * .25, y + s * .25, s * .5, s * .4);
+    }
+  }
+  function draw() {
+    if ($('sGame').hidden) return;
+    const dpr = window.devicePixelRatio || 1;
+    const W = cv.parentElement.clientWidth;
+    const cell = Math.floor(W / (COLS + 0.6));
+    const pad = Math.floor((W - cell * COLS) / 2);
+    const H = ROWS * cell + pad * 2;
+    cv.style.height = H + 'px'; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.imageSmoothingEnabled = false;
+    G = { cell, x0: pad, y0: pad };
+    const c = { meadow: css('--meadow'), meadow2: css('--meadow-2'), grass: css('--grass'), grass2: css('--grass-2'), wood: css('--wood'), stone: css('--stone'), stone2: css('--stone-2'), leaf: css('--leaf'), leaf2: css('--leaf-2'), trunk: css('--trunk'), water: css('--water'), water2: css('--water-2'), wool: css('--wool'), face: css('--face'), line: css('--line'), muted: css('--muted'), accent: css('--accent'), bad: css('--bad') };
+    ctx.fillStyle = c.meadow; ctx.fillRect(0, 0, W, H);
+    for (let i = 0; i < COLS; i++) for (let j = 0; j < ROWS; j++) if ((i + j) % 2) { ctx.fillStyle = c.meadow2; ctx.fillRect(pad + i * cell, pad + j * cell, cell, cell); }
+    // Gehege-Füllung (nach gültiger Abgabe)
+    if (anim) {
+      for (let j = 0; j < anim.h; j++) for (let i = 0; i < anim.w; i++) {
+        ctx.fillStyle = (i + j) % 2 ? c.grass : c.grass2; ctx.fillRect(pad + (anim.x + i) * cell, pad + (anim.y + j) * cell, cell, cell);
+      }
+    }
+    lvl().obs.forEach((o) => drawObstacle(o, c));
+    // Gitterpunkte
+    ctx.fillStyle = c.muted;
+    const d = Math.max(2, Math.round(cell / 12));
+    for (let i = 0; i <= COLS; i++) for (let j = 0; j <= ROWS; j++) ctx.fillRect(pad + i * cell - d / 2, pad + j * cell - d / 2, d, d);
+    // Zaun
+    const rail = Math.max(2, Math.round(cell / 10)), post = Math.max(4, Math.round(cell / 4.2));
+    ctx.fillStyle = c.wood;
+    const posts = new Set();
+    S.segs.forEach((k) => {
+      const [t, xs, ys] = k.split(','), x = +xs, y = +ys;
+      const X = pad + x * cell, Y = pad + y * cell;
+      if (t === 'h') { ctx.fillRect(X, Y - rail * 1.5, cell, rail); ctx.fillRect(X, Y + rail * .5, cell, rail); posts.add(x + ',' + y); posts.add((x + 1) + ',' + y); }
+      else { ctx.fillRect(X - rail * 1.5, Y, rail, cell); ctx.fillRect(X + rail * .5, Y, rail, cell); posts.add(x + ',' + y); posts.add(x + ',' + (y + 1)); }
+    });
+    posts.forEach((p) => { const [x, y] = p.split(',').map(Number); ctx.fillRect(Math.round(pad + x * cell - post / 2), Math.round(pad + y * cell - post / 2), post, post); });
+    // Schafe laufen auf die Weide
+    if (anim) {
+      const t = performance.now() - anim.start, pal = { W: c.wool, E: c.wool, F: c.face, L: c.face };
+      let running = false;
+      anim.sheep.forEach((s) => {
+        const tt = reduceMotion ? 1e9 : t - s.delay;
+        if (tt < 0) { running = true; return; }
+        const p = Math.min(1, tt / s.dur);
+        if (p < 1) running = true;
+        const e = 1 - Math.pow(1 - p, 2);
+        const xc = s.sx + (s.tx - s.sx) * e;
+        const hop = p < 1 ? -Math.abs(Math.sin(tt / 85)) * cell * 0.18 : 0;
+        sprite(ctx, SHEEP, pad + xc * cell, pad + s.ty * cell + hop, cell, pal, p < 1 ? false : s.flip);
+      });
+      if (running && !rafPending) { rafPending = true; requestAnimationFrame(() => { rafPending = false; draw(); }); }
+    }
+    // Vorschau der gezogenen Linie
+    if (drag && mode) {
+      const s = drag.s, e = lineEnd(drag), col = mode === 'build' ? c.accent : c.bad;
+      const X = (p) => pad + p[0] * cell, Y = (p) => pad + p[1] * cell;
+      ctx.strokeStyle = col; ctx.lineWidth = Math.max(4, cell / 6); ctx.lineCap = 'round';
+      ctx.setLineDash([cell / 4, cell / 6]);
+      ctx.beginPath(); ctx.moveTo(X(s), Y(s)); ctx.lineTo(X(e), Y(e)); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = col;
+      [s, e].forEach((p) => { ctx.beginPath(); ctx.arc(X(p), Y(p), cell * .24, 0, Math.PI * 2); ctx.fill(); });
+      const n = Math.abs(e[0] - s[0]) + Math.abs(e[1] - s[1]);
+      if (n) {
+        const txt = (mode === 'build' ? '+' : '−') + n;
+        ctx.font = '700 ' + Math.round(cell * .6) + 'px ' + css('--font-num');
+        const tw = ctx.measureText(txt).width + cell * .5, th = cell * .85;
+        let lx = Math.min(W - tw - 4, Math.max(4, X(e) - tw / 2)), ly = Y(e) - cell * 1.5;
+        if (ly < 4) ly = Y(e) + cell * .7;
+        ctx.fillStyle = col; ctx.fillRect(lx, ly, tw, th);
+        ctx.fillStyle = css('--surface'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(txt, lx + tw / 2, ly + th / 2);
+        ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
+      }
+    }
+  }
+
+  function nearest(ev) {
+    const r = cv.getBoundingClientRect();
+    const gx = Math.round((ev.clientX - r.left - G.x0) / G.cell), gy = Math.round((ev.clientY - r.top - G.y0) / G.cell);
+    return [Math.min(COLS, Math.max(0, gx)), Math.min(ROWS, Math.max(0, gy))];
+  }
+  function edgeKey(p, q) {
+    if (p[1] === q[1]) return 'h,' + Math.min(p[0], q[0]) + ',' + p[1];
+    return 'v,' + p[0] + ',' + Math.min(p[1], q[1]);
+  }
+  let full = false;
+  function applyEdge(k) {
+    const set = segSet();
+    if (mode === 'build') {
+      if (set.has(k)) return;
+      if (S.segs.length >= lvl().fence) { if (!full) { full = true; toast('Alle Zaunteile sind verbaut!'); } return; }
+      S.segs.push(k);
+    } else if (mode === 'demolish') {
+      if (!set.has(k)) return;
+      S.segs = S.segs.filter((s) => s !== k); S.demolished = true;
+    }
+    changed();
+  }
+  function changed() { anim = null; hideFeedback(); updateFence(); draw(); }
+  // Linie von Gitterpunkt zu Gitterpunkt ziehen, gesetzt wird beim Loslassen.
+  let drag = null;
+  function lineEnd(d) {
+    const dx = d.e[0] - d.s[0], dy = d.e[1] - d.s[1];
+    return Math.abs(dx) >= Math.abs(dy) ? [d.e[0], d.s[1]] : [d.s[0], d.e[1]];
+  }
+  function lineEdges(s, e) {
+    const out = []; let p = s.slice();
+    while (p[0] !== e[0] || p[1] !== e[1]) {
+      const n = p[0] !== e[0] ? [p[0] + Math.sign(e[0] - p[0]), p[1]] : [p[0], p[1] + Math.sign(e[1] - p[1])];
+      out.push(edgeKey(p, n)); p = n;
+    }
+    return out;
+  }
+  function nearestEdge(ev) {
+    const r = cv.getBoundingClientRect();
+    const fx = (ev.clientX - r.left - G.x0) / G.cell, fy = (ev.clientY - r.top - G.y0) / G.cell;
+    const ix = Math.min(COLS - 1, Math.max(0, Math.floor(fx))), iy = Math.min(ROWS - 1, Math.max(0, Math.floor(fy)));
+    const rx = fx - ix, ry = fy - iy;
+    const c = [[ry, 'h,' + ix + ',' + iy], [1 - ry, 'h,' + ix + ',' + (iy + 1)], [rx, 'v,' + ix + ',' + iy], [1 - rx, 'v,' + (ix + 1) + ',' + iy]];
+    c.sort((a, b) => a[0] - b[0]);
+    return c[0][1];
+  }
+  cv.addEventListener('pointerdown', (e) => {
+    if (S.solved) return;
+    if (!mode) { toast('Tippe zuerst auf „Zaun bauen“.'); return; }
+    const p = nearest(e);
+    drag = { s: p, e: p }; cv.setPointerCapture(e.pointerId); draw();
+  });
+  cv.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const q = nearest(e);
+    if (q[0] !== drag.e[0] || q[1] !== drag.e[1]) { drag.e = q; draw(); }
+  });
+  cv.addEventListener('pointerup', (e) => {
+    if (!drag) return;
+    const s = drag.s, end = lineEnd(drag);
+    drag = null;
+    if (s[0] === end[0] && s[1] === end[1]) {
+      if (mode === 'demolish') { const k = nearestEdge(e); if (S.segs.includes(k)) { S.segs = S.segs.filter((x) => x !== k); S.demolished = true; } }
+    } else {
+      full = false;
+      lineEdges(s, end).forEach((k) => applyEdge(k));
+    }
+    save(); changed();
+  });
+  cv.addEventListener('pointercancel', () => { drag = null; draw(); });
+
+  // ---------------- Spiel-UI ----------------
+  function setMode(m) {
+    mode = mode === m ? null : m;
+    $('tBuild').setAttribute('aria-pressed', mode === 'build');
+    $('tDemolish').setAttribute('aria-pressed', mode === 'demolish');
+  }
+  $('tBuild').onclick = () => setMode('build');
+  $('tDemolish').onclick = () => setMode('demolish');
+  $('tClear').onclick = () => { if (!S.segs.length || S.solved) return; S.segs = []; S.demolished = true; save(); changed(); };
+
+  function updateFence() {
+    const F = lvl().fence, n = S.segs.length;
+    $('fCount').textContent = n + ' von ' + F + ' Zaunteilen verbaut';
+    $('fLeft').textContent = n < F ? 'noch ' + (F - n) + ' übrig' : 'alle verbaut';
+    $('fBar').style.width = (n / F * 100) + '%';
+  }
+  function feedback(kind, text) { const f = $('feedback'); f.hidden = false; f.className = 'feedback ' + kind; f.textContent = text; }
+  function hideFeedback() { if (!S.solved) $('feedback').hidden = true; }
+
+  function missionText(m, L) {
+    if (m.max) return 'Ich habe ' + L.fence + ' Zaunteile. Bau mir das Gehege, in das <b>so viele Schafe wie möglich</b> passen!';
+    return 'Ich habe <b>' + m.n + ' Schafe</b> und ' + L.fence + ' Zaunteile. Ich will ein rechteckiges Gehege, in dem <b>genau ' + m.n + ' Schafe</b> Platz haben. Alle Zaunteile sollen verbaut werden.';
+  }
+  function renderGame() {
+    const L = lvl(), m = mis();
+    $('hudLvl').innerHTML = L.title + '<small>' + L.place + ' · Auftrag ' + (S.mi + 1) + ' von ' + L.missions.length + '</small>';
+    $('hudPts').textContent = S.pts;
+    $('mWho').textContent = m.who;
+    $('mText').innerHTML = missionText(m, L);
+    drawAvatar(m.who);
+    $('actPlay').hidden = S.solved; $('actNext').hidden = !S.solved;
+    updateReject();
+    if (!S.solved) $('feedback').hidden = true;
+    updateFence(); draw(); tick();
+  }
+  function tick() {
+    if (!S.startedAt || S.finishedAt) return;
+    if (Date.now() - S.startedAt >= LIMIT) { timeUp(); return; }
+    if (!$('sGame').hidden) {
+      const left = LIMIT - elapsed(), el = $('hudTime');
+      el.textContent = fmt(left); el.style.color = left < 60000 ? 'var(--bad)' : '';
+    }
+  }
+  function timeUp() { S.timeUp = true; S.finishedAt = S.startedAt + LIMIT; S.screen = 'result'; save(); toast('Die Zeit ist um!'); renderResult(); }
+  setInterval(tick, 1000);
+
+  function validate() {
+    const F = lvl().fence, set = segSet();
+    if (!S.segs.length) return { err: 'Bau zuerst einen Zaun. Tippe auf „Zaun bauen“ und zieh über die Weide.' };
+    let minX = 99, minY = 99, maxX = -1, maxY = -1;
+    S.segs.forEach((k) => { const [t, x, y] = k.split(','); const X = +x, Y = +y; const X2 = t === 'h' ? X + 1 : X, Y2 = t === 'v' ? Y + 1 : Y;
+      minX = Math.min(minX, X); minY = Math.min(minY, Y); maxX = Math.max(maxX, X2); maxY = Math.max(maxY, Y2); });
+    const w = maxX - minX, h = maxY - minY;
+    if (w === 0 || h === 0) return { err: 'Das ist nur eine Linie. Der Zaun muss eine Fläche einschließen.' };
+    const per = [];
+    for (let i = minX; i < maxX; i++) { per.push('h,' + i + ',' + minY); per.push('h,' + i + ',' + maxY); }
+    for (let j = minY; j < maxY; j++) { per.push('v,' + minX + ',' + j); per.push('v,' + maxX + ',' + j); }
+    const perSet = new Set(per);
+    const extra = S.segs.filter((k) => !perSet.has(k)).length;
+    const missing = per.filter((k) => !set.has(k)).length;
+    if (extra) return { err: 'Das ist kein Rechteck. Reiß die Zaunteile ab, die nicht zum Rechteck gehören.' };
+    if (missing) return { err: 'Der Zaun hat noch ' + (missing === 1 ? 'eine Lücke' : missing + ' Lücken') + '. Die Schafe würden weglaufen!' };
+    if (S.segs.length !== F) return { err: 'Der Bauer will alle ' + F + ' Zaunteile verbauen. Es liegen noch ' + (F - S.segs.length) + ' herum.' };
+    const obs = obsSet();
+    for (let i = minX; i < maxX; i++) for (let j = minY; j < maxY; j++) if (obs.has(i + ',' + j)) return { err: 'Im Gehege steht ein Hindernis. Dort können keine Schafe stehen. Bau das Gehege an eine andere Stelle.' };
+    return { x: minX, y: minY, w, h, area: w * h };
+  }
+
+  function solve(entry, text) {
+    if (isDone(S.lv, S.mi)) { S.solved = true; save(); renderGame(); return; }
+    let gain = 100;
+    const clean = !S.demolished && !S.missErr;
+    if (clean) gain += 20;
+    S.pts += gain; S.solved = true;
+    S.log.push(Object.assign({ lv: S.lv, mi: S.mi, pts: gain }, entry));
+    save();
+    feedback('ok', text + ' +' + gain + ' Punkte' + (clean ? ' (mit Sauber-Bonus)' : '') + '.');
+    toast('+' + gain);
+    renderGame(); $('feedback').hidden = false;
+  }
+  function penalty(p, text) {
+    S.pts -= p; S.errors++; S.missErr = true; save();
+    $('hudPts').textContent = S.pts;
+    feedback('bad', text + ' −' + p + ' Punkte.');
+    toast('−' + p);
+  }
+
+  $('submitBtn').onclick = () => {
+    if (S.solved) return;
+    const v = validate();
+    if (v.err) { anim = null; draw(); feedback('hint', v.err); return; }
+    startAnim(v); draw();
+    const m = mis(), F = lvl().fence;
+    const dims = v.w + ' × ' + v.h;
+    // Dasselbe falsche Gehege (egal wo und wie gedreht) kostet nur einmal Punkte.
+    const key = Math.min(v.w, v.h) + 'x' + Math.max(v.w, v.h);
+    S.tried = S.tried || [];
+    const wrong = (text) => {
+      if (S.tried.includes(key)) { feedback('hint', 'Dieses Gehege (' + dims + ') hast du schon abgegeben. Es passt nicht. Bau ein anderes!'); return; }
+      S.tried.push(key); penalty(20, text);
+    };
+    if (m.max) {
+      if (v.area === maxArea(F)) solve({ how: 'build', w: v.w, h: v.h, area: v.area, max: true }, 'Großartig! ' + dims + ' = ' + v.area + ' Schafe. Mehr geht wirklich nicht.');
+      else wrong(dims + ' = ' + v.area + ' Schafe. Da passen noch mehr hinein!');
+    } else if (v.area === m.n) {
+      solve({ how: 'build', w: v.w, h: v.h, area: v.area }, 'Perfekt! ' + dims + ' = ' + v.area + ' Schafe.');
+    } else {
+      wrong('Das sind ' + v.area + ' Schafe. ' + m.who + ' wollte genau ' + m.n + '.');
+    }
+  };
+  function updateReject() {
+    const b = $('rejectBtn');
+    b.disabled = !!S.rejWrong;
+    b.textContent = S.rejWrong ? 'Es geht! Such weiter' : 'Geht nicht!';
+  }
+  $('rejectBtn').onclick = () => {
+    if (S.solved || S.rejWrong) return;
+    const m = mis(), F = lvl().fence;
+    if (!m.max && !possibleAreas(F).has(m.n)) {
+      anim = null; draw();
+      solve({ how: 'reject', n: m.n }, 'Richtig erkannt! Mit ' + F + ' Zaunteilen gibt es kein Rechteck für genau ' + m.n + ' Schafe.');
+    } else {
+      S.rejWrong = true; updateReject();
+      penalty(40, m.max ?'Ein größtes Gehege gibt es auf jeden Fall. Such weiter!' : 'Das geht doch! Für ' + m.n + ' Schafe gibt es ein passendes Gehege.');
+    }
+  };
+  $('nextBtn').onclick = () => {
+    S.solved = false; S.segs = []; S.demolished = false; S.missErr = false; S.tried = []; S.rejWrong = false; anim = null;
+    if (S.mi + 1 < lvl().missions.length) { S.mi++; save(); renderGame(); }
+    else { S.screen = 'level'; save(); renderLevelDone(); }
+  };
+  $('finishBtn').onclick = () => finish();
+
+  // ---------------- Level geschafft ----------------
+  function levelTable(lv) {
+    const rows = S.log.filter((e) => e.lv === lv);
+    if (!rows.length) return '<p class="muted small">Noch keine Aufträge gelöst.</p>';
+    let h = '<table><thead><tr><th>Wunsch</th><th>Gehege</th><th>Schafe</th></tr></thead><tbody>';
+    rows.forEach((e) => {
+      const m = LEVELS[lv].missions[e.mi];
+      const wish = m.max ? 'möglichst viele' : m.n;
+      h += '<tr><td>' + wish + '</td><td>' + (e.how === 'reject' ? 'geht nicht' : e.w + ' × ' + e.h) + '</td><td>' + (e.how === 'reject' ? '–' : e.area) + '</td></tr>';
+    });
+    return h + '</tbody></table>';
+  }
+  function renderLevelDone() {
+    show('sLevel');
+    const L = lvl(), last = S.lv + 1 >= LEVELS.length;
+    $('ldTitle').textContent = L.title + ' geschafft!';
+    $('ldSub').textContent = 'Deine Gehege mit ' + L.fence + ' Zaunteilen';
+    $('ldTable').innerHTML = levelTable(S.lv);
+    $('ldHint').textContent = S.lv === 0 ? 'Schau dir die Tabelle an: Welches Gehege bringt die meisten Schafe unter? Was fällt dir auf?' : 'Vergleiche mit Level 1: Wie sieht das größte Gehege jeweils aus?';
+    $('ldNext').hidden = last;
+    $('ldNext').textContent = S.lv + 1 === LEVELS.length - 1 ? 'Bonuslevel starten' : 'Weiter zu ' + LEVELS[S.lv + 1].title;
+    if (last) finish();
+  }
+  $('ldNext').onclick = () => { S.lv++; S.mi = 0; S.screen = 'game'; save(); show('sGame'); renderGame(); };
+  $('ldFinish').onclick = () => finish();
+
+  // ---------------- Ergebnis ----------------
+  function finish() { if (!S.finishedAt) S.finishedAt = Date.now(); S.screen = 'result'; save(); renderResult(); }
+  function renderResult() {
+    show('sResult');
+    const secs = Math.floor(elapsed() / 1000);
+    $('rName').textContent = S.name;
+    $('rPts').textContent = S.pts;
+    $('rSolved').textContent = solvedCount() + '/' + TOTAL_M;
+    $('rTime').textContent = fmt(elapsed());
+    $('rErr').textContent = S.errors;
+    $('rCode').textContent = encodeResult(S.pts, solvedCount(), secs);
+    let h = '';
+    LEVELS.forEach((L, i) => { if (S.log.some((e) => e.lv === i)) h += '<h3>' + L.title + ' · ' + L.fence + ' Zaunteile</h3>' + levelTable(i); });
+    $('rTable').innerHTML = h || '<p class="muted small">Noch keine Aufträge gelöst.</p>';
+    const allDone = solvedCount() >= TOTAL_M;
+    $('rTitle').textContent = S.timeUp ? 'Die Zeit ist um!' : 'Feierabend auf dem Hof';
+    $('rBack').hidden = allDone || S.timeUp;
+  }
+  $('rBack').onclick = () => {
+    if (S.timeUp || Date.now() - S.startedAt >= LIMIT) { timeUp(); return; }
+    S.finishedAt = 0;
+    // Bereits gelöster Auftrag? Dann zum nächsten offenen springen, nie doppelt spielen.
+    if (isDone(S.lv, S.mi)) {
+      S.solved = false; S.segs = []; S.demolished = false; S.missErr = false; S.tried = []; S.rejWrong = false; anim = null;
+      if (S.mi + 1 < lvl().missions.length) S.mi++;
+      else if (S.lv + 1 < LEVELS.length) { S.lv++; S.mi = 0; }
+    }
+    S.screen = 'game'; save(); show('sGame'); renderGame();
+  };
+  let armNew = false;
+  $('rNew').onclick = () => {
+    if (!armNew) { armNew = true; $('rNew').textContent = 'Wirklich? Alle Punkte gehen verloren. Nochmal tippen'; setTimeout(() => { armNew = false; $('rNew').textContent = 'Neues Spiel starten'; }, 3500); return; }
+    const b = S.beamer; S = fresh(); S.beamer = b; save(); route();
+  };
+
+  // ---------------- Start ----------------
+  $('nameIn').value = S.name || '';
+  $('startBtn').onclick = () => {
+    const n = $('nameIn').value.trim();
+    if (!n) { $('nameIn').focus(); toast('Gib zuerst deinen Spielernamen ein.'); return; }
+    S.name = n; S.startedAt = Date.now(); S.finishedAt = 0; S.timeUp = false; S.screen = 'game'; save();
+    show('sGame'); renderGame();
+  };
+
+  // ---------------- Beamer ----------------
+  const BF = [{ F: 16, col: 'var(--warn)', name: 'Level 1 · 16 Zaunteile' }, { F: 20, col: 'var(--accent)', name: 'Level 2 · 20 Zaunteile' }, { F: 24, col: 'var(--plum)', name: 'Level 3 · 24 Zaunteile' }, { F: 28, col: 'var(--ok)', name: 'Bonus · 28 Zaunteile' }];
+  function chartSVG(series, curves) {
+    const W = 900, H = 560, m = { l: 60, r: 20, t: 16, b: 56 }, xMax = 14, yMax = 50, fs = 18;
+    const sx = (v) => m.l + v / xMax * (W - m.l - m.r), sy = (v) => H - m.b - v / yMax * (H - m.t - m.b);
+    let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Diagramm: Breite gegen Anzahl Schafe">';
+    for (let y = 0; y <= yMax; y += 5) s += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + sy(y) + '" y2="' + sy(y) + '" stroke="var(--line)"/><text x="' + (m.l - 10) + '" y="' + (sy(y) + 6) + '" text-anchor="end" font-size="' + fs + '" fill="var(--muted)">' + y + '</text>';
+    for (let x = 0; x <= xMax; x++) s += '<text x="' + sx(x) + '" y="' + (H - m.b + 26) + '" text-anchor="middle" font-size="' + fs + '" fill="var(--muted)">' + x + '</text>';
+    s += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + sy(0) + '" y2="' + sy(0) + '" stroke="var(--muted)" stroke-width="2"/><line x1="' + m.l + '" x2="' + m.l + '" y1="' + m.t + '" y2="' + sy(0) + '" stroke="var(--muted)" stroke-width="2"/>';
+    s += '<text x="' + (W - m.r) + '" y="' + (H - 6) + '" text-anchor="end" font-size="' + fs + '" font-weight="700" fill="var(--fg)">Breite b</text><text x="' + (m.l + 8) + '" y="' + (m.t + 18) + '" font-size="' + fs + '" font-weight="700" fill="var(--fg)">Schafe A</text>';
+    if (curves) series.forEach((sr) => { const k = sr.F / 2; let d = ''; for (let i = 0; i <= 100; i++) { const x = i / 100 * k; d += (i ? 'L' : 'M') + sx(x).toFixed(1) + ' ' + sy(x * (k - x)).toFixed(1); } s += '<path d="' + d + '" fill="none" stroke="' + sr.col + '" stroke-width="3" stroke-dasharray="7 6"/>'; });
+    series.forEach((sr) => sr.pts.forEach((p) => {
+      const r = 9 + Math.min(7, (p.n - 1) * 1.5);
+      s += '<circle cx="' + sx(p.b) + '" cy="' + sy(p.A) + '" r="' + r + '" fill="' + sr.col + '" stroke="var(--surface)" stroke-width="2"/>';
+      if (p.n > 1) s += '<text x="' + (sx(p.b) + r + 4) + '" y="' + (sy(p.A) - r) + '" font-size="16" font-weight="700" fill="var(--fg)">' + p.n + '×</text>';
+    }));
+    return s + '</svg>';
+  }
+  function renderBeamer() {
+    const B = S.beamer;
+    let side = '';
+    BF.forEach((cfg) => {
+      const k = cfg.F / 2;
+      let btns = '';
+      for (let b = 1; b < k; b++) { const n = B.counts[cfg.F + ',' + b] || 0; btns += '<button class="b-btn' + (n ? ' has' : '') + '" data-f="' + cfg.F + '" data-b="' + b + '">' + (k - b) + '×' + b + '<small>' + (b * (k - b)) + ' Schafe' + (n ? ' · ' + n + '×' : '') + '</small></button>'; }
+      side += '<div class="card"><h2 style="color:' + cfg.col + '">' + cfg.name + '</h2><div class="b-row">' + btns + '</div></div>';
+    });
+    side += '<div class="b-actions"><button class="pill" id="bUndo">Rückgängig</button><button class="pill" id="bCurves" aria-pressed="' + B.curves + '">Parabeln einzeichnen</button><button class="pill danger" id="bReset">Alles zurücksetzen</button></div>';
+    $('bSide').innerHTML = side;
+    const series = BF.map((cfg) => ({ F: cfg.F, col: cfg.col, pts: Object.keys(B.counts).filter((k) => k.startsWith(cfg.F + ',') && B.counts[k] > 0).map((k) => { const b = +k.split(',')[1]; return { b, A: b * (cfg.F / 2 - b), n: B.counts[k] }; }) }));
+    $('bigChart').innerHTML = chartSVG(series, B.curves);
+    $('bigLegend').innerHTML = BF.map((c) => '<span><i style="background:' + c.col + '"></i>' + c.name + '</span>').join('');
+    $('bUndo').onclick = () => { const l = B.hist.pop(); if (!l) return; B.counts[l]--; save(); renderBeamer(); };
+    $('bCurves').onclick = () => { B.curves = !B.curves; save(); renderBeamer(); };
+    let arm = false;
+    $('bReset').onclick = (e) => { if (!arm) { arm = true; e.target.textContent = 'Sicher? Nochmal tippen'; setTimeout(() => { arm = false; if (e.target.isConnected) e.target.textContent = 'Alles zurücksetzen'; }, 3000); return; } S.beamer = { counts: {}, hist: [], curves: false }; save(); renderBeamer(); };
+    renderScores();
+  }
+
+  // ---------------- Rangliste ----------------
+  const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  function renderScores() {
+    const list = (S.scores || []).slice().sort((a, b) => b.pts - a.pts || a.secs - b.secs);
+    if (!list.length) { $('scoreTable').innerHTML = '<p class="muted">Noch keine Ergebnisse. Gib oben den Ergebniscode eines Schülers ein.</p>'; return; }
+    let h = '<table><thead><tr><th>Platz</th><th class="l">Name</th><th>Punkte</th><th>Aufträge</th><th>Zeit</th><th></th></tr></thead><tbody>';
+    let place = 0, prev = null;
+    list.forEach((r, i) => {
+      if (!prev || prev.pts !== r.pts || prev.secs !== r.secs) place = i + 1;
+      prev = r;
+      h += '<tr class="' + (place <= 3 ? 'top top' + place : '') + '"><td>' + place + '.</td><td class="l">' + esc(r.name) + '</td><td>' + r.pts + '</td><td>' + r.solved + '/' + TOTAL_M + '</td><td>' + fmt(r.secs * 1000) + '</td><td><button class="linkbtn del" data-code="' + r.code + '" aria-label="Eintrag löschen">entfernen</button></td></tr>';
+    });
+    $('scoreTable').innerHTML = h + '</tbody></table>';
+  }
+  function addScore() {
+    const out = $('sOut'), code = $('sCode').value;
+    const r = decodeResult(code);
+    if (!r) { out.style.color = 'var(--bad)'; out.textContent = 'Diesen Code gibt es nicht. Bitte noch einmal genau abtippen.'; return; }
+    const norm = encodeResult(r.pts, r.solved, r.secs);
+    S.scores = S.scores || [];
+    if (S.scores.some((s) => s.code === norm)) { out.style.color = 'var(--warn)'; out.textContent = 'Dieser Code ist schon eingetragen.'; return; }
+    const name = $('sName').value.trim() || 'Schüler ' + (S.scores.length + 1);
+    S.scores.push({ name, code: norm, pts: r.pts, solved: r.solved, secs: r.secs });
+    save();
+    out.style.color = 'var(--ok)';
+    out.textContent = name + ': ' + r.pts + ' Punkte · ' + r.solved + ' von ' + TOTAL_M + ' Aufträgen · ' + fmt(r.secs * 1000) + ' min';
+    $('sName').value = ''; $('sCode').value = ''; $('sName').focus();
+    renderScores();
+  }
+  $('sAdd').onclick = addScore;
+  ['sName', 'sCode'].forEach((id) => $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); if (id === 'sName') $('sCode').focus(); else addScore(); } }));
+  $('scoreTable').addEventListener('click', (e) => {
+    const b = e.target.closest('.del'); if (!b) return;
+    S.scores = (S.scores || []).filter((s) => s.code !== b.dataset.code); save(); renderScores();
+  });
+  let bigBoard = false;
+  $('sBig').onclick = () => {
+    bigBoard = !bigBoard;
+    $('sBig').setAttribute('aria-pressed', bigBoard);
+    $('sBig').textContent = bigBoard ? 'Zurück zum Diagramm' : 'Rangliste groß zeigen';
+    document.querySelector('#beamer .b-grid').hidden = bigBoard;
+    $('beamerHead').hidden = bigBoard;
+    $('scoreCard').classList.toggle('big', bigBoard);
+  };
+  let armS = false;
+  $('sClear').onclick = () => {
+    if (!armS) { armS = true; $('sClear').textContent = 'Sicher? Nochmal tippen'; setTimeout(() => { armS = false; $('sClear').textContent = 'Rangliste leeren'; }, 3000); return; }
+    armS = false; $('sClear').textContent = 'Rangliste leeren'; S.scores = []; save(); renderScores();
+  };
+  $('bSide').addEventListener('click', (e) => {
+    const b = e.target.closest('.b-btn'); if (!b) return;
+    const k = b.dataset.f + ',' + b.dataset.b;
+    S.beamer.counts[k] = (S.beamer.counts[k] || 0) + 1; S.beamer.hist.push(k); save(); renderBeamer();
+  });
+
+  // ---------------- Routing ----------------
+  function route() {
+    if (location.hash === '#beamer') { show('beamer'); renderBeamer(); return; }
+    if (!S.startedAt || S.screen === 'start') { show('sStart'); return; }
+    if (!S.finishedAt && Date.now() - S.startedAt >= LIMIT) { timeUp(); return; }
+    if (S.screen === 'result') return renderResult();
+    if (S.screen === 'level') return renderLevelDone();
+    show('sGame'); renderGame();
+  }
+  window.addEventListener('hashchange', route);
+  window.addEventListener('resize', draw);
+  if (window.matchMedia) { const mq = window.matchMedia('(prefers-color-scheme: dark)'); if (mq.addEventListener) mq.addEventListener('change', draw); }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
+  route();
+})();
+</script>
+
+</body>
+</html>
