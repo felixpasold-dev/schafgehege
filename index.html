@@ -275,7 +275,7 @@ td.l { text-align: left; }
       <p class="muted small">Zeig oder sag diesen Code deiner Lehrkraft. Darin stecken deine Punkte und deine Zeit.</p>
     </div>
     <div class="card">
-      <h2>Alle deine Gehege</h2>
+      <h2>Deine Übersicht: alle Abgaben</h2>
       <div id="rTable"></div>
     </div>
     <button class="btn secondary" id="rBack">Weiterspielen</button>
@@ -334,24 +334,24 @@ td.l { text-align: left; }
       { who: 'Der sture Schäfer', p: 'Er', max: true }
     ]},
     { title: 'Level 2', place: 'Weide mit Bäumen', fence: 20, obs: [[2,2,'tree'],[9,7,'tree'],[5,9,'rock'],[10,1,'rock'],[6,5,'tree']], missions: [
+      { who: 'Bauer Jonas', p: 'Er', n: 16 },
       { who: 'Bäuerin Fatma', p: 'Sie', n: 24 },
       { who: 'Bauer Karl', p: 'Er', n: 9 },
-      { who: 'Bauer Jonas', p: 'Er', n: 26 },
       { who: 'Bäuerin Lena', p: 'Sie', n: 21 },
       { who: 'Der sture Schäfer', p: 'Er', max: true }
     ]},
     { title: 'Level 3', place: 'Weide am Teich', fence: 24, obs: [[9,6,'pond'],[10,6,'pond'],[9,7,'pond'],[10,7,'pond'],[3,0,'tree'],[0,8,'tree'],[6,9,'rock'],[11,1,'rock'],[1,3,'tree'],[7,2,'rock']], missions: [
+      { who: 'Bauer Karl', p: 'Er', n: 30 },
       { who: 'Bauer Jonas', p: 'Er', n: 20 },
       { who: 'Bäuerin Lena', p: 'Sie', n: 35 },
-      { who: 'Bauer Karl', p: 'Er', n: 37 },
       { who: 'Bäuerin Fatma', p: 'Sie', n: 32 },
       { who: 'Der sture Schäfer', p: 'Er', max: true }
     ]},
     { title: 'Bonuslevel', place: 'Der Felsenhof', fence: 28, obs: [[0,0,'rock'],[1,0,'rock'],[11,9,'rock'],[10,9,'rock'],[5,0,'tree'],[11,4,'tree'],[0,6,'tree'],[8,9,'pond'],[7,9,'pond'],[3,9,'tree'],[9,2,'rock']], missions: [
       { who: 'Bäuerin Lena', p: 'Sie', n: 40 },
-      { who: 'Bauer Karl', p: 'Er', n: 45 },
-      { who: 'Bäuerin Fatma', p: 'Sie', n: 47 },
+      { who: 'Bäuerin Fatma', p: 'Sie', n: 42 },
       { who: 'Bauer Jonas', p: 'Er', n: 48 },
+      { who: 'Bauer Karl', p: 'Er', n: 45 },
       { who: 'Der sture Schäfer', p: 'Er', max: true }
     ]}
   ];
@@ -699,10 +699,13 @@ td.l { text-align: left; }
     // Dasselbe falsche Gehege (egal wo und wie gedreht) kostet nur einmal Punkte.
     const key = Math.min(v.w, v.h) + 'x' + Math.max(v.w, v.h);
     S.tried = S.tried || [];
+    const rec = (ok) => { S.attempts = S.attempts || []; S.attempts.push({ lv: S.lv, mi: S.mi, w: v.w, h: v.h, area: v.area, ok }); };
     const wrong = (text) => {
       if (S.tried.includes(key)) { feedback('hint', 'Dieses Gehege (' + dims + ') hast du schon abgegeben. Es passt nicht. Bau ein anderes!'); return; }
-      S.tried.push(key); penalty(20, text);
+      S.tried.push(key); rec(false); penalty(20, text);
     };
+    const correct = m.max ? v.area === maxArea(F) : v.area === m.n;
+    if (correct && !isDone(S.lv, S.mi)) rec(true);
     if (m.max) {
       if (v.area === maxArea(F)) solve({ how: 'build', w: v.w, h: v.h, area: v.area, max: true }, 'Großartig! ' + dims + ' = ' + v.area + ' Schafe. Mehr geht wirklich nicht.');
       else wrong(dims + ' = ' + v.area + ' Schafe. Da passen noch mehr hinein!');
@@ -720,7 +723,10 @@ td.l { text-align: left; }
   $('rejectBtn').onclick = () => {
     if (S.solved || S.rejWrong) return;
     const m = mis(), F = lvl().fence;
-    if (!m.max && !possibleAreas(F).has(m.n)) {
+    S.attempts = S.attempts || [];
+    const right = !m.max && !possibleAreas(F).has(m.n);
+    if (!isDone(S.lv, S.mi)) S.attempts.push({ lv: S.lv, mi: S.mi, reject: true, ok: right });
+    if (right) {
       anim = null; draw();
       solve({ how: 'reject', n: m.n }, 'Richtig erkannt! Mit ' + F + ' Zaunteilen gibt es kein Rechteck für genau ' + m.n + ' Schafe.');
     } else {
@@ -737,13 +743,16 @@ td.l { text-align: left; }
 
   // ---------------- Level geschafft ----------------
   function levelTable(lv) {
-    const rows = S.log.filter((e) => e.lv === lv);
-    if (!rows.length) return '<p class="muted small">Noch keine Aufträge gelöst.</p>';
-    let h = '<table><thead><tr><th>Wunsch</th><th>Gehege</th><th>Schafe</th></tr></thead><tbody>';
+    // Alle Abgaben (auch die falschen) in der Reihenfolge, in der sie gemacht wurden.
+    const rows = (S.attempts || []).filter((e) => e.lv === lv);
+    if (!rows.length) return '<p class="muted small">In diesem Level hast du noch nichts abgegeben.</p>';
+    let h = '<table><thead><tr><th>Wunsch</th><th>Länge</th><th>Breite</th><th>Schafe</th><th>Ergebnis</th></tr></thead><tbody>';
     rows.forEach((e) => {
       const m = LEVELS[lv].missions[e.mi];
-      const wish = m.max ? 'möglichst viele' : m.n;
-      h += '<tr><td>' + wish + '</td><td>' + (e.how === 'reject' ? 'geht nicht' : e.w + ' × ' + e.h) + '</td><td>' + (e.how === 'reject' ? '–' : e.area) + '</td></tr>';
+      const wish = m.max ? 'max.' : m.n;
+      const res = '<span style="color:var(--' + (e.ok ? 'ok' : 'bad') + ');font-weight:700">' + (e.ok ? 'richtig' : 'falsch') + '</span>';
+      if (e.reject) h += '<tr><td>' + wish + '</td><td colspan="3">„Geht nicht!“</td><td>' + res + '</td></tr>';
+      else h += '<tr><td>' + wish + '</td><td>' + e.w + '</td><td>' + e.h + '</td><td>' + e.area + '</td><td>' + res + '</td></tr>';
     });
     return h + '</tbody></table>';
   }
@@ -773,7 +782,7 @@ td.l { text-align: left; }
     $('rErr').textContent = S.errors;
     $('rCode').textContent = encodeResult(S.pts, solvedCount(), secs);
     let h = '';
-    LEVELS.forEach((L, i) => { if (S.log.some((e) => e.lv === i)) h += '<h3>' + L.title + ' · ' + L.fence + ' Zaunteile</h3>' + levelTable(i); });
+    LEVELS.forEach((L, i) => { if ((S.attempts || []).some((e) => e.lv === i)) h += '<h3>' + L.title + ' · ' + L.fence + ' Zaunteile</h3>' + levelTable(i); });
     $('rTable').innerHTML = h || '<p class="muted small">Noch keine Aufträge gelöst.</p>';
     const allDone = solvedCount() >= TOTAL_M;
     $('rTitle').textContent = S.timeUp ? 'Die Zeit ist um!' : 'Feierabend auf dem Hof';
