@@ -186,7 +186,7 @@ td.l { text-align: left; }
           <tr><td class="l">„Geht nicht!“, obwohl es geht</td><td>−40</td></tr>
         </tbody>
       </table>
-      <p class="muted small">Ihr habt <b>15 Minuten</b> für 4 Level. Startet alle gleichzeitig, wenn die Lehrkraft „Los“ sagt. Bei Punktgleichstand gewinnt, wer schneller war.</p>
+      <p class="muted small">Ihr habt <b>15 Minuten</b> für 5 Level. Startet alle gleichzeitig, wenn die Lehrkraft „Los“ sagt. Bei Punktgleichstand gewinnt, wer schneller war.</p>
     </div>
     <label for="nameIn"><b>Dein Spielername</b></label>
     <input type="text" id="nameIn" maxlength="20" placeholder="z. B. Mia K." autocomplete="off">
@@ -252,6 +252,30 @@ td.l { text-align: left; }
     </div>
     <button class="btn" id="ldNext">Weiter</button>
     <button class="btn secondary" id="ldFinish">Ergebnis zeigen</button>
+  </div>
+</section>
+
+<!-- INTRO LEVEL 5 -->
+<section id="sIntro" hidden>
+  <div class="wrap">
+    <h1>Neu in Level 5: Tierwohl!</h1>
+    <div class="card">
+      <p>Auf der Tierwohl-Weide gibt es <b>Wassertränken</b> und <b>Bäume</b>. Glückliche Schafe brauchen beides: Wasser zum Trinken und Schatten zum Ausruhen.</p>
+    </div>
+    <div class="card">
+      <h2>Das ist jetzt anders</h2>
+      <ul>
+        <li>Du darfst Wasser und Bäume <b>mit einzäunen</b>.</li>
+        <li>Auf Wasser- und Baumfeldern <b>kann kein Schaf stehen</b>. Es gilt: <b>Schafe = Kästchen im Gehege − Wasser- und Baumfelder</b>.</li>
+        <li><b>Felsen</b> dürfen weiterhin nicht ins Gehege.</li>
+        <li>Alle Zaunteile müssen wie immer verbaut werden.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>Tierwohl-Bonus: +30 Punkte</h2>
+      <p>Liegt in deinem Gehege mindestens <b>ein Wasserfeld und ein Baum</b>, bekommst du für einen gelösten Auftrag 30 Bonuspunkte.</p>
+    </div>
+    <button class="btn" id="introGo">Verstanden, los geht's</button>
   </div>
 </section>
 
@@ -347,14 +371,39 @@ td.l { text-align: left; }
       { who: 'Bäuerin Fatma', p: 'Sie', n: 32 },
       { who: 'Der sture Schäfer', p: 'Er', max: true }
     ]},
-    { title: 'Bonuslevel', place: 'Der Felsenhof', fence: 28, obs: [[0,0,'rock'],[1,0,'rock'],[11,9,'rock'],[10,9,'rock'],[5,0,'tree'],[11,4,'tree'],[0,6,'tree'],[8,9,'pond'],[7,9,'pond'],[3,9,'tree'],[9,2,'rock']], missions: [
+    { title: 'Level 4', place: 'Der Felsenhof', fence: 28, obs: [[0,0,'rock'],[1,0,'rock'],[11,9,'rock'],[10,9,'rock'],[5,0,'tree'],[11,4,'tree'],[0,6,'tree'],[8,9,'pond'],[7,9,'pond'],[3,9,'tree'],[9,2,'rock']], missions: [
       { who: 'Bäuerin Lena', p: 'Sie', n: 40 },
       { who: 'Bäuerin Fatma', p: 'Sie', n: 42 },
       { who: 'Bauer Jonas', p: 'Er', n: 48 },
       { who: 'Bauer Karl', p: 'Er', n: 45 },
       { who: 'Der sture Schäfer', p: 'Er', max: true }
+    ]},
+    // Tierwohl: Wasser ('pond') und Bäume dürfen ins Gehege, Felsen nicht. Schafe = Kästchen − Wasser − Bäume.
+    { title: 'Level 5', place: 'Tierwohl-Weide', fence: 24, welfare: true, obs: [[3,2,'pond'],[8,6,'pond'],[4,8,'pond'],[1,5,'tree'],[9,2,'tree'],[6,4,'tree'],[10,8,'rock'],[0,0,'rock']], missions: [
+      { who: 'Bauer Karl', p: 'Er', n: 25 },
+      { who: 'Bäuerin Lena', p: 'Sie', n: 18 },
+      { who: 'Bäuerin Fatma', p: 'Sie', n: 28 },
+      { who: 'Bauer Jonas', p: 'Er', n: 30 },
+      { who: 'Der sture Schäfer', p: 'Er', max: true, welfare: true }
     ]}
   ];
+  // Welche Schafzahlen sind auf dieser Weide überhaupt erreichbar? (alle Rechtecke, alle Positionen)
+  function levelStats(L) {
+    if (L._st) return L._st;
+    const half = L.fence / 2, om = new Map(L.obs.map((o) => [o[0] + ',' + o[1], o[2]]));
+    const any = new Set(); let max = 0, maxW = 0;
+    for (let w = 1; w < half; w++) {
+      const h = half - w;
+      for (let x = 0; x + w <= COLS; x++) for (let y = 0; y + h <= ROWS; y++) {
+        let wa = 0, tr = 0, ro = 0;
+        for (let i = x; i < x + w; i++) for (let j = y; j < y + h; j++) { const t = om.get(i + ',' + j); if (t === 'pond') wa++; else if (t === 'tree') tr++; else if (t) ro++; }
+        if (ro || (!L.welfare && (wa || tr))) continue;
+        const s = w * h - wa - tr;
+        any.add(s); max = Math.max(max, s); if (wa && tr) maxW = Math.max(maxW, s);
+      }
+    }
+    return (L._st = { any, max, maxW });
+  }
   // Karten sind quer (12 × 10) notiert; für das Hochformat gespiegelt.
   LEVELS.forEach((L) => { L.obs = L.obs.map(([x, y, t]) => [y, x, t]); });
   const LIMIT = 15 * 60 * 1000;
@@ -394,10 +443,10 @@ td.l { text-align: left; }
     const chk = n % 4096, v = (Math.floor(n / 4096) ^ MIX) >>> 0;
     if (v >= 268435456 || hash12(v) !== chk) return null;
     const secs = v % 1024, solved = Math.floor(v / 1024) % 32, pts = Math.floor(v / 32768) - 2000;
-    if (solved > 20 || secs > 900) return null;
+    if (solved > TOTAL_M || secs > 900) return null;
     return { pts, solved, secs };
   }
-  function show(id) { ['sStart', 'sGame', 'sLevel', 'sResult', 'beamer'].forEach((s) => $(s).hidden = s !== id); window.scrollTo(0, 0); }
+  function show(id) { ['sStart', 'sGame', 'sLevel', 'sIntro', 'sResult', 'beamer'].forEach((s) => $(s).hidden = s !== id); window.scrollTo(0, 0); }
 
   // ---------------- Sprites ----------------
   const SHEEP = ['..........','..WWWWW...','.WWWWWWWFF','WWWWWWWFEF','WWWWWWWFFF','.WWWWWWW..','..L.L.L.L.','..L.L.L.L.'];
@@ -430,7 +479,9 @@ td.l { text-align: left; }
   function startAnim(v) {
     const n = v.w * v.h, step = Math.min(70, 1600 / n), sheep = [];
     let k = 0;
+    const blocked = new Set(LEVELS[S.lv].obs.map((o) => o[0] + ',' + o[1]));
     for (let i = v.w - 1; i >= 0; i--) for (let j = 0; j < v.h; j++) {
+      if (blocked.has((v.x + i) + ',' + (v.y + j))) continue; // auf Wasser und Bäumen steht kein Schaf
       const tx = v.x + i, sx = -1.2;
       sheep.push({ tx, ty: v.y + j, sx, delay: k++ * step, dur: (tx - sx) / 9 * 1000, flip: ((i * 7 + j * 3) % 3) === 0 });
     }
@@ -622,11 +673,14 @@ td.l { text-align: left; }
   function hideFeedback() { if (!S.solved) $('feedback').hidden = true; }
 
   function missionText(m, L) {
+    if (m.max && m.welfare) return 'Ich habe ' + L.fence + ' Zaunteile. Meine Schafe brauchen <b>Wasser und Schatten</b>, und es sollen <b>so viele Schafe wie möglich</b> hineinpassen!';
     if (m.max) return 'Ich habe ' + L.fence + ' Zaunteile. Bau mir das Gehege, in das <b>so viele Schafe wie möglich</b> passen!';
-    return 'Ich habe <b>' + m.n + ' Schafe</b> und ' + L.fence + ' Zaunteile. Ich will ein rechteckiges Gehege, in dem <b>genau ' + m.n + ' Schafe</b> Platz haben. Alle Zaunteile sollen verbaut werden.';
+    return 'Ich habe <b>' + m.n + ' Schafe</b> und ' + L.fence + ' Zaunteile. Ich will ein rechteckiges Gehege, in dem <b>genau ' + m.n + ' Schafe</b> Platz haben. Alle Zaunteile sollen verbaut werden.'
+      + (L.welfare ? ' <span class="muted">Wasser und ein Baum im Gehege bringen den Tierwohl-Bonus.</span>' : '');
   }
   function renderGame() {
     const L = lvl(), m = mis();
+    if (L.welfare && !S.introSeen) { S.screen = 'intro'; save(); show('sIntro'); return; }
     $('hudLvl').innerHTML = L.title + '<small>' + L.place + ' · Auftrag ' + (S.mi + 1) + ' von ' + L.missions.length + '</small>';
     $('hudPts').textContent = S.pts;
     $('mWho').textContent = m.who;
@@ -665,9 +719,16 @@ td.l { text-align: left; }
     if (extra) return { err: 'Das ist kein Rechteck. Reiß die Zaunteile ab, die nicht zum Rechteck gehören.' };
     if (missing) return { err: 'Der Zaun hat noch ' + (missing === 1 ? 'eine Lücke' : missing + ' Lücken') + '. Die Schafe würden weglaufen!' };
     if (S.segs.length !== F) return { err: 'Der Bauer will alle ' + F + ' Zaunteile verbauen. Es liegen noch ' + (F - S.segs.length) + ' herum.' };
-    const obs = obsSet();
-    for (let i = minX; i < maxX; i++) for (let j = minY; j < maxY; j++) if (obs.has(i + ',' + j)) return { err: 'Im Gehege steht ein Hindernis. Dort können keine Schafe stehen. Bau das Gehege an eine andere Stelle.' };
-    return { x: minX, y: minY, w, h, area: w * h };
+    const om = new Map(lvl().obs.map((o) => [o[0] + ',' + o[1], o[2]]));
+    let water = 0, tree = 0;
+    for (let i = minX; i < maxX; i++) for (let j = minY; j < maxY; j++) {
+      const t = om.get(i + ',' + j);
+      if (!t) continue;
+      if (lvl().welfare && t !== 'rock') { if (t === 'pond') water++; else tree++; continue; }
+      return { err: lvl().welfare ? 'Im Gehege liegt ein Felsen. Felsen dürfen nicht ins Gehege. Bau das Gehege an eine andere Stelle.' : 'Im Gehege steht ein Hindernis. Dort können keine Schafe stehen. Bau das Gehege an eine andere Stelle.' };
+    }
+    // area = Anzahl der Schafe (Kästchen ohne Wasser- und Baumfelder)
+    return { x: minX, y: minY, w, h, cells: w * h, water, tree, area: w * h - water - tree };
   }
 
   function solve(entry, text) {
@@ -675,10 +736,12 @@ td.l { text-align: left; }
     let gain = 100;
     const clean = !S.demolished && !S.missErr;
     if (clean) gain += 20;
+    if (entry.welfare) gain += 30;
     S.pts += gain; S.solved = true;
     S.log.push(Object.assign({ lv: S.lv, mi: S.mi, pts: gain }, entry));
     save();
-    feedback('ok', text + ' +' + gain + ' Punkte' + (clean ? ' (mit Sauber-Bonus)' : '') + '.');
+    const bon = [clean ? 'Sauber-Bonus' : '', entry.welfare ? 'Tierwohl-Bonus' : ''].filter(Boolean);
+    feedback('ok', text + ' +' + gain + ' Punkte' + (bon.length ? ' (mit ' + bon.join(' und ') + ')' : '') + '.');
     toast('+' + gain);
     renderGame(); $('feedback').hidden = false;
   }
@@ -696,21 +759,27 @@ td.l { text-align: left; }
     startAnim(v); draw();
     const m = mis(), F = lvl().fence;
     const dims = v.w + ' × ' + v.h;
+    const L = lvl(), st = levelStats(L), welfareOk = v.water > 0 && v.tree > 0;
+    const desc = L.welfare && (v.water + v.tree)
+      ? dims + ' = ' + v.cells + ' Kästchen, davon ' + (v.water + v.tree) + ' mit Wasser oder Baum → ' + v.area + ' Schafe'
+      : dims + ' = ' + v.area + ' Schafe';
     // Dasselbe falsche Gehege (egal wo und wie gedreht) kostet nur einmal Punkte.
-    const key = Math.min(v.w, v.h) + 'x' + Math.max(v.w, v.h);
+    const key = Math.min(v.w, v.h) + 'x' + Math.max(v.w, v.h) + '|' + v.area + '|' + welfareOk;
     S.tried = S.tried || [];
     const rec = (ok) => { S.attempts = S.attempts || []; S.attempts.push({ lv: S.lv, mi: S.mi, w: v.w, h: v.h, area: v.area, ok }); };
     const wrong = (text) => {
       if (S.tried.includes(key)) { feedback('hint', 'Dieses Gehege (' + dims + ') hast du schon abgegeben. Es passt nicht. Bau ein anderes!'); return; }
       S.tried.push(key); rec(false); penalty(20, text);
     };
-    const correct = m.max ? v.area === maxArea(F) : v.area === m.n;
+    const correct = m.max ? (m.welfare ? welfareOk && v.area === st.maxW : v.area === st.max) : v.area === m.n;
     if (correct && !isDone(S.lv, S.mi)) rec(true);
+    const bonus = !!(L.welfare && welfareOk);
     if (m.max) {
-      if (v.area === maxArea(F)) solve({ how: 'build', w: v.w, h: v.h, area: v.area, max: true }, 'Großartig! ' + dims + ' = ' + v.area + ' Schafe. Mehr geht wirklich nicht.');
-      else wrong(dims + ' = ' + v.area + ' Schafe. Da passen noch mehr hinein!');
-    } else if (v.area === m.n) {
-      solve({ how: 'build', w: v.w, h: v.h, area: v.area }, 'Perfekt! ' + dims + ' = ' + v.area + ' Schafe.');
+      if (correct) solve({ how: 'build', w: v.w, h: v.h, area: v.area, max: true, welfare: bonus }, 'Großartig! ' + desc + '. Mehr geht wirklich nicht.');
+      else if (m.welfare && !welfareOk) wrong(desc + '. Aber deine Schafe brauchen Wasser und Schatten!');
+      else wrong(desc + '. Da passen noch mehr hinein!');
+    } else if (correct) {
+      solve({ how: 'build', w: v.w, h: v.h, area: v.area, welfare: bonus }, 'Perfekt! ' + desc + '.');
     } else {
       wrong('Das sind ' + v.area + ' Schafe. ' + m.who + ' wollte genau ' + m.n + '.');
     }
@@ -724,7 +793,7 @@ td.l { text-align: left; }
     if (S.solved || S.rejWrong) return;
     const m = mis(), F = lvl().fence;
     S.attempts = S.attempts || [];
-    const right = !m.max && !possibleAreas(F).has(m.n);
+    const right = !m.max && !levelStats(lvl()).any.has(m.n);
     if (!isDone(S.lv, S.mi)) S.attempts.push({ lv: S.lv, mi: S.mi, reject: true, ok: right });
     if (right) {
       anim = null; draw();
@@ -764,10 +833,11 @@ td.l { text-align: left; }
     $('ldTable').innerHTML = levelTable(S.lv);
     $('ldHint').textContent = S.lv === 0 ? 'Schau dir die Tabelle an: Welches Gehege bringt die meisten Schafe unter? Was fällt dir auf?' : 'Vergleiche mit Level 1: Wie sieht das größte Gehege jeweils aus?';
     $('ldNext').hidden = last;
-    $('ldNext').textContent = S.lv + 1 === LEVELS.length - 1 ? 'Bonuslevel starten' : 'Weiter zu ' + LEVELS[S.lv + 1].title;
+    $('ldNext').textContent = 'Weiter zu ' + LEVELS[S.lv + 1].title;
     if (last) finish();
   }
   $('ldNext').onclick = () => { S.lv++; S.mi = 0; S.screen = 'game'; save(); show('sGame'); renderGame(); };
+  $('introGo').onclick = () => { S.introSeen = true; S.screen = 'game'; save(); show('sGame'); renderGame(); };
   $('ldFinish').onclick = () => finish();
 
   // ---------------- Ergebnis ----------------
@@ -815,7 +885,7 @@ td.l { text-align: left; }
   };
 
   // ---------------- Beamer ----------------
-  const BF = [{ F: 16, col: 'var(--warn)', name: 'Level 1 · 16 Zaunteile' }, { F: 20, col: 'var(--accent)', name: 'Level 2 · 20 Zaunteile' }, { F: 24, col: 'var(--plum)', name: 'Level 3 · 24 Zaunteile' }, { F: 28, col: 'var(--ok)', name: 'Bonus · 28 Zaunteile' }];
+  const BF = [{ F: 16, col: 'var(--warn)', name: 'Level 1 · 16 Zaunteile' }, { F: 20, col: 'var(--accent)', name: 'Level 2 · 20 Zaunteile' }, { F: 24, col: 'var(--plum)', name: 'Level 3 · 24 Zaunteile' }, { F: 28, col: 'var(--ok)', name: 'Level 4 · 28 Zaunteile' }];
   function chartSVG(series, curves) {
     // Koordinatensystem wie im Heft: Achsen mit Pfeilspitzen, Teilstriche, Beschriftung an den Pfeilen.
     const W = 920, H = 600, m = { l: 64, r: 70, t: 56, b: 52 }, xMax = 14, yMax = 50, fs = 18;
@@ -930,6 +1000,7 @@ td.l { text-align: left; }
     if (!S.finishedAt && Date.now() - S.startedAt >= LIMIT) { timeUp(); return; }
     if (S.screen === 'result') return renderResult();
     if (S.screen === 'level') return renderLevelDone();
+    if (S.screen === 'intro') { show('sIntro'); return; }
     show('sGame'); renderGame();
   }
   window.addEventListener('hashchange', route);
