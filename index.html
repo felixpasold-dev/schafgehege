@@ -186,7 +186,7 @@ td.l { text-align: left; }
           <tr><td class="l">„Geht nicht!“, obwohl es geht</td><td>−40</td></tr>
         </tbody>
       </table>
-      <p class="muted small">Ihr habt <b>15 Minuten</b> für 5 Level. Startet alle gleichzeitig, wenn die Lehrkraft „Los“ sagt. Bei Punktgleichstand gewinnt, wer schneller war.</p>
+      <p class="muted small">Ihr habt <b>15 Minuten</b> für 5 Level. Startet alle gleichzeitig, wenn die Lehrkraft „Los“ sagt. Ab 600 Punkten gibt es ein Bonbon. Schaffen mindestens fünf von euch 1600 Punkte, gibt es Kuchen für die ganze Klasse.</p>
     </div>
     <label for="nameIn"><b>Dein Spielername</b></label>
     <input type="text" id="nameIn" maxlength="20" placeholder="z. B. Mia K." autocomplete="off">
@@ -323,10 +323,10 @@ td.l { text-align: left; }
     </div>
     <div class="card" id="scoreCard">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        <h2>Rangliste</h2>
+        <h2>Punkteübersicht</h2>
         <div class="b-actions">
-          <button class="pill" id="sBig" aria-pressed="false">Rangliste groß zeigen</button>
-          <button class="pill danger" id="sClear">Rangliste leeren</button>
+          <button class="pill" id="sBig" aria-pressed="false">Übersicht groß zeigen</button>
+          <button class="pill danger" id="sClear">Übersicht leeren</button>
         </div>
       </div>
       <div class="entry">
@@ -938,17 +938,16 @@ td.l { text-align: left; }
     renderScores();
   }
 
-  // ---------------- Rangliste ----------------
+  // ---------------- Punkteübersicht (keine Rangliste, nur Punktehürden) ----------------
   const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   function renderScores() {
-    const list = (S.scores || []).slice().sort((a, b) => b.pts - a.pts || a.secs - b.secs);
-    if (!list.length) { $('scoreTable').innerHTML = '<p class="muted">Noch keine Ergebnisse. Gib oben den Ergebniscode eines Schülers ein.</p>'; return; }
-    let h = '<table><thead><tr><th>Platz</th><th class="l">Name</th><th>Punkte</th><th>Aufträge</th><th>Zeit</th><th></th></tr></thead><tbody>';
-    let place = 0, prev = null;
-    list.forEach((r, i) => {
-      if (!prev || prev.pts !== r.pts || prev.secs !== r.secs) place = i + 1;
-      prev = r;
-      h += '<tr class="' + (place <= 3 ? 'top top' + place : '') + '"><td>' + place + '.</td><td class="l">' + esc(r.name) + '</td><td>' + r.pts + '</td><td>' + r.solved + '/' + TOTAL_M + '</td><td>' + fmt(r.secs * 1000) + '</td><td><button class="linkbtn del" data-code="' + r.code + '" aria-label="Eintrag löschen">entfernen</button></td></tr>';
+    const list = (S.scores || []).slice().sort((a, b) => a.name.localeCompare(b.name, 'de'));
+    if (!list.length) { $('scoreTable').innerHTML = '<p class="muted">Noch keine Ergebnisse. Gib oben den Ergebniscode ein.</p>'; return; }
+    const bonbon = list.filter((r) => r.pts >= 600).length, kuchen = list.filter((r) => r.pts >= 1600).length;
+    let h = '<p style="font-weight:700">' + bonbon + ' von ' + list.length + ' mit mindestens 600 Punkten (Bonbon) · ' + kuchen + ' mit mindestens 1600 Punkten' + (kuchen >= 5 ? ' – Kuchen für die Klasse!' : ' (Kuchen ab 5)') + '</p>';
+    h += '<table><thead><tr><th class="l">Name</th><th>Punkte</th><th>Aufträge</th><th>Bonbon</th><th></th></tr></thead><tbody>';
+    list.forEach((r) => {
+      h += '<tr><td class="l">' + esc(r.name) + '</td><td>' + r.pts + '</td><td>' + r.solved + '/' + TOTAL_M + '</td><td>' + (r.pts >= 600 ? '✓' : '') + '</td><td><button class="linkbtn del" data-code="' + r.code + '" aria-label="Eintrag löschen">entfernen</button></td></tr>';
     });
     $('scoreTable').innerHTML = h + '</tbody></table>';
   }
@@ -977,15 +976,15 @@ td.l { text-align: left; }
   $('sBig').onclick = () => {
     bigBoard = !bigBoard;
     $('sBig').setAttribute('aria-pressed', bigBoard);
-    $('sBig').textContent = bigBoard ? 'Zurück zum Diagramm' : 'Rangliste groß zeigen';
+    $('sBig').textContent = bigBoard ? 'Zurück zum Diagramm' : 'Übersicht groß zeigen';
     document.querySelector('#beamer .b-grid').hidden = bigBoard;
     $('beamerHead').hidden = bigBoard;
     $('scoreCard').classList.toggle('big', bigBoard);
   };
   let armS = false;
   $('sClear').onclick = () => {
-    if (!armS) { armS = true; $('sClear').textContent = 'Sicher? Nochmal tippen'; setTimeout(() => { armS = false; $('sClear').textContent = 'Rangliste leeren'; }, 3000); return; }
-    armS = false; $('sClear').textContent = 'Rangliste leeren'; S.scores = []; save(); renderScores();
+    if (!armS) { armS = true; $('sClear').textContent = 'Sicher? Nochmal tippen'; setTimeout(() => { armS = false; $('sClear').textContent = 'Übersicht leeren'; }, 3000); return; }
+    armS = false; $('sClear').textContent = 'Übersicht leeren'; S.scores = []; save(); renderScores();
   };
   $('bSide').addEventListener('click', (e) => {
     const b = e.target.closest('.b-btn'); if (!b) return;
