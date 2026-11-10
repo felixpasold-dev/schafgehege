@@ -186,7 +186,7 @@ td.l { text-align: left; }
           <tr><td class="l">„Geht nicht!“, obwohl es geht</td><td>−40</td></tr>
         </tbody>
       </table>
-      <p class="muted small">Ihr habt <b>15 Minuten</b> für 5 Level. Startet alle gleichzeitig, wenn die Lehrkraft „Los“ sagt. Ab 600 Punkten gibt es ein Bonbon. Schaffen mindestens fünf von euch 1600 Punkte, gibt es Kuchen für die ganze Klasse.</p>
+      <p class="muted small">Ihr habt <b>15 Minuten</b> für 5 Level. Startet alle gleichzeitig, wenn die Lehrkraft „Los“ sagt. Ab 600 Punkten gibt es ein Bonbon. Schaffen mindestens fünf von euch 1200 Punkte, gibt es Kuchen für die ganze Klasse.</p>
     </div>
     <label for="nameIn"><b>Dein Spielername</b></label>
     <input type="text" id="nameIn" maxlength="20" placeholder="z. B. Mia K." autocomplete="off">
@@ -943,8 +943,8 @@ td.l { text-align: left; }
   function renderScores() {
     const list = (S.scores || []).slice().sort((a, b) => a.name.localeCompare(b.name, 'de'));
     if (!list.length) { $('scoreTable').innerHTML = '<p class="muted">Noch keine Ergebnisse. Gib oben den Ergebniscode ein.</p>'; return; }
-    const bonbon = list.filter((r) => r.pts >= 600).length, kuchen = list.filter((r) => r.pts >= 1600).length;
-    let h = '<p style="font-weight:700">' + bonbon + ' von ' + list.length + ' mit mindestens 600 Punkten (Bonbon) · ' + kuchen + ' mit mindestens 1600 Punkten' + (kuchen >= 5 ? ' – Kuchen für die Klasse!' : ' (Kuchen ab 5)') + '</p>';
+    const bonbon = list.filter((r) => r.pts >= 600).length, kuchen = list.filter((r) => r.pts >= 1200).length;
+    let h = '<p style="font-weight:700">' + bonbon + ' von ' + list.length + ' mit mindestens 600 Punkten (Bonbon) · ' + kuchen + ' mit mindestens 1200 Punkten' + (kuchen >= 5 ? ' – Kuchen für die Klasse!' : ' (Kuchen ab 5)') + '</p>';
     h += '<table><thead><tr><th class="l">Name</th><th>Punkte</th><th>Aufträge</th><th>Bonbon</th><th></th></tr></thead><tbody>';
     list.forEach((r) => {
       h += '<tr><td class="l">' + esc(r.name) + '</td><td>' + r.pts + '</td><td>' + r.solved + '/' + TOTAL_M + '</td><td>' + (r.pts >= 600 ? '✓' : '') + '</td><td><button class="linkbtn del" data-code="' + r.code + '" aria-label="Eintrag löschen">entfernen</button></td></tr>';
